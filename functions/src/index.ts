@@ -11,8 +11,9 @@ export const healthCheck = onRequest((_req, res) => {
 // waiting on this, so trigger latency doesn't matter here).
 export { onVaccineCreated, onVaccineUpdated, onVaccineDeleted } from './vaccines.js';
 
-// M3: cow create/update, done as callables (not triggers) so the client
-// awaits the vaccination fan-out completing in the same request — see
-// cows.ts for why.
+// M3/M5: cow create/update/delete, done as callables (not direct client
+// writes) — create/update need the vaccination fan-out to run server-side
+// in the same request, delete needs a recursive subcollection delete the
+// client can't do itself. See cows.ts for details.
 // Still to come: dailyVaccinationCheck (scheduled 08:00, M6) push notifications.
-export { createCow, updateCow } from './cows.js';
+export { createCow, updateCow, deleteCow } from './cows.js';

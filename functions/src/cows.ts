@@ -100,3 +100,27 @@ export const updateCow = onCall<UpdateCowInput>({ region: REGION }, async (reque
 
   return { ok: true };
 });
+
+interface DeleteCowInput {
+  id: string;
+}
+
+// Hard delete. A callable (not a client-side deleteDoc) because Firestore
+// doesn't cascade-delete subcollections — without recursively removing
+// vaccinations/* too, every deleted cow would leave an orphaned
+// subcollection behind that collection-group queries (M2's vaccine fan-out,
+// M6's due-date scan) would keep needlessly matching forever.
+export const deleteCow = onCall<DeleteCowInput>({ region: REGION }, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in required.');
+  const { id } = request.data ?? {};
+  if (!id) throw new HttpsError('invalid-argument', 'id is required.');
+
+  const db = getFirestore();
+  const cowRef = db.collection('cows').doc(id);
+  const cowSnap = await cowRef.get();
+  if (!cowSnap.exists) throw new HttpsError('not-found', 'Cow not found.');
+
+  await db.recursiveDelete(cowRef);
+
+  return { ok: true };
+});

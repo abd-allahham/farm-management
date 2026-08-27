@@ -1,4 +1,13 @@
-import { collection, onSnapshot, orderBy, query, type Firestore } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  updateDoc,
+  type Firestore,
+} from 'firebase/firestore';
 import { httpsCallable, type Functions } from 'firebase/functions';
 import { db, functions } from '../../lib/firebase';
 import type { Cow, CowVaccination } from './types';
@@ -33,6 +42,7 @@ export function subscribeToCows(
           birthDate: data.birthDate as number,
           yardId: data.yardId as string,
           status: data.status as Cow['status'],
+          slaughteredAt: data.slaughteredAt?.toMillis?.(),
           // Pending local writes haven't got a server timestamp yet.
           createdAt: data.createdAt?.toMillis?.() ?? Date.now(),
         };
@@ -58,6 +68,7 @@ export function subscribeToCowVaccinations(
           vaccineId: data.vaccineId as string,
           dueDate: data.dueDate as number,
           status: data.status as CowVaccination['status'],
+          takenAt: data.takenAt?.toMillis?.(),
         };
       });
       onChange(vaccinations);
@@ -89,4 +100,35 @@ export async function updateCow(id: string, birthDate: number, yardId: string): 
     'updateCow',
   );
   await call({ id, birthDate, yardId });
+}
+
+// Vaccination status and slaughter have no fan-out logic to run — unlike
+// create/update above, these are plain, instant Firestore writes;
+// firestore.rules scopes exactly which fields each is allowed to touch so
+// the client can't smuggle in anything else.
+
+export async function setVaccinationTaken(
+  cowId: string,
+  vaccineId: string,
+  taken: boolean,
+): Promise<void> {
+  await updateDoc(doc(requireDb(), 'cows', cowId, 'vaccinations', vaccineId), {
+    status: taken ? 'done' : 'pending',
+    takenAt: taken ? serverTimestamp() : null,
+  });
+}
+
+export async function slaughterCow(id: string): Promise<void> {
+  await updateDoc(doc(requireDb(), 'cows', id), {
+    status: 'slaughtered',
+    slaughteredAt: serverTimestamp(),
+  });
+}
+
+// Hard delete via callable, not a client-side deleteDoc — the cow's
+// vaccinations subcollection needs recursively removing too, which the
+// client can't do itself. See functions/src/cows.ts.
+export async function deleteCow(id: string): Promise<void> {
+  const call = httpsCallable<{ id: string }, { ok: true }>(requireFunctions(), 'deleteCow');
+  await call({ id });
 }
