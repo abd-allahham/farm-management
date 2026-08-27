@@ -75,9 +75,6 @@ export function CowsPage() {
   }, []);
 
   const yardName = (yardId: string) => yards.find((y) => y.id === yardId)?.name ?? '—';
-  // Deleted is a soft-delete state — hide it from the working list (and,
-  // from M7, reports/statistics) without erasing the record.
-  const visibleCows = cows.filter((c) => c.status !== 'deleted');
 
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault();
@@ -205,11 +202,11 @@ export function CowsPage() {
       <ul className="mt-4 divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
         {loading && <li className="px-4 py-3 text-sm text-slate-500">Loading cows…</li>}
 
-        {!loading && visibleCows.length === 0 && (
+        {!loading && cows.length === 0 && (
           <li className="px-4 py-3 text-sm text-slate-500">No cows yet — add one above.</li>
         )}
 
-        {visibleCows.map((cow) => (
+        {cows.map((cow) => (
           <li key={cow.id} className="px-4 py-3">
             <div className="flex items-center justify-between gap-3">
               {editingId === cow.id ? (
@@ -324,7 +321,7 @@ export function CowsPage() {
       {deletingCow && (
         <ConfirmDialog
           title={`Delete "${deletingCow.barcode}"?`}
-          message="This cow will be permanently excluded from reports and statistics. This cannot be undone from here."
+          message="This permanently deletes the cow and its vaccination history — it will no longer appear anywhere, including reports and statistics. This cannot be undone."
           confirmLabel="Delete permanently"
           danger
           onConfirm={() => void handleConfirmDelete()}

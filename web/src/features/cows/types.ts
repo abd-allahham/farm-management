@@ -1,4 +1,7 @@
-export type CowStatus = 'active' | 'slaughtered' | 'deleted';
+// Delete is a hard delete (the doc and its vaccinations subcollection are
+// actually removed via the deleteCow callable), so there's no 'deleted'
+// status to represent here — a deleted cow simply no longer exists.
+export type CowStatus = 'active' | 'slaughtered';
 
 export interface Cow {
   id: string;
@@ -7,9 +10,6 @@ export interface Cow {
   yardId: string;
   status: CowStatus;
   slaughteredAt?: number;
-  // 'deleted' is a soft delete — the record stays for audit purposes but is
-  // hidden from the working list and (from M7) reports/statistics.
-  deletedAt?: number;
   createdAt: number;
 }
 
