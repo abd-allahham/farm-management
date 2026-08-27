@@ -1,9 +1,10 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './auth/AuthContext';
 import { ProtectedRoute } from './auth/ProtectedRoute';
 import { isFirebaseConfigured } from './lib/firebase';
+import { AppShell } from './layout/AppShell';
+import { YardsPage } from './features/yards/YardsPage';
 import { LoginPage } from './routes/LoginPage';
-import { DashboardPage } from './routes/DashboardPage';
 import { NeedsConfigPage } from './routes/NeedsConfigPage';
 
 export default function App() {
@@ -17,13 +18,15 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route
-            path="/"
             element={
               <ProtectedRoute>
-                <DashboardPage />
+                <AppShell />
               </ProtectedRoute>
             }
-          />
+          >
+            <Route index element={<Navigate to="/yards" replace />} />
+            <Route path="yards" element={<YardsPage />} />
+          </Route>
         </Routes>
       </BrowserRouter>
     </AuthProvider>
