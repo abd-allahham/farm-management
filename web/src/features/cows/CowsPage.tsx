@@ -113,8 +113,12 @@ export function CowsPage() {
         Add a cow by entering its ear tag number, birth date, and yard.
       </p>
 
-      <form onSubmit={handleCreate} className="mt-4 flex flex-wrap gap-2">
-        <div className="flex min-w-40 flex-1 gap-2">
+      {/* Stacked full-width on mobile, row layout from sm: up — native date/
+          select controls don't reliably shrink-to-fit inside flex-wrap on
+          mobile browsers (Safari in particular), which was overlapping the
+          camera button. */}
+      <form onSubmit={handleCreate} className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        <div className="flex gap-2 sm:min-w-40 sm:flex-1">
           <input
             value={draft.barcode}
             onChange={(e) => setDraft((d) => ({ ...d, barcode: e.target.value }))}
@@ -135,12 +139,12 @@ export function CowsPage() {
           value={draft.birthDate}
           onChange={(e) => setDraft((d) => ({ ...d, birthDate: e.target.value }))}
           type="date"
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-green-600"
+          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-green-600 sm:w-auto"
         />
         <select
           value={draft.yardId}
           onChange={(e) => setDraft((d) => ({ ...d, yardId: e.target.value }))}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-green-600"
+          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-green-600 sm:w-auto"
         >
           <option value="">Select yard…</option>
           {yards.map((yard) => (
@@ -152,7 +156,7 @@ export function CowsPage() {
         <button
           type="submit"
           disabled={creating || !draft.barcode.trim() || !draft.birthDate || !draft.yardId}
-          className="rounded-lg bg-green-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-lg bg-green-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
         >
           Add cow
         </button>
@@ -175,23 +179,23 @@ export function CowsPage() {
           <li key={cow.id} className="px-4 py-3">
             <div className="flex items-center justify-between gap-3">
               {editingId === cow.id ? (
-                <div className="flex flex-1 flex-wrap gap-2">
+                <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:flex-wrap">
                   <input
                     value={editDraft.barcode}
                     disabled
-                    className="min-w-32 flex-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm text-slate-500"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm text-slate-500 sm:w-auto sm:min-w-32 sm:flex-1"
                   />
                   <input
                     value={editDraft.birthDate}
                     onChange={(e) => setEditDraft((d) => ({ ...d, birthDate: e.target.value }))}
                     type="date"
                     autoFocus
-                    className="rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-green-600"
+                    className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-green-600 sm:w-auto"
                   />
                   <select
                     value={editDraft.yardId}
                     onChange={(e) => setEditDraft((d) => ({ ...d, yardId: e.target.value }))}
-                    className="rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-green-600"
+                    className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm outline-none focus:border-green-600 sm:w-auto"
                   >
                     {yards.map((yard) => (
                       <option key={yard.id} value={yard.id}>
