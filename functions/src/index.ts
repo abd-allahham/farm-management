@@ -7,8 +7,7 @@ export const healthCheck = onRequest((_req, res) => {
   res.status(200).json({ ok: true, service: 'farm-management-functions' });
 });
 
-// M2: vaccine <-> cow fan-out (create/update/delete).
-// Still to come:
-//   - onCowCreated (Firestore trigger, M3): seed vaccine list for a new cow
-//   - dailyVaccinationCheck (scheduled 08:00, M6): push FCM notifications
+// M2/M3: vaccine <-> cow fan-out, both directions, plus recompute on edit.
+// Still to come: dailyVaccinationCheck (scheduled 08:00, M6) push notifications.
 export { onVaccineCreated, onVaccineUpdated, onVaccineDeleted } from './vaccines.js';
+export { onCowCreated, onCowUpdated } from './cows.js';
