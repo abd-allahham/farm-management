@@ -9,8 +9,16 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
 
-    // Not defined yet (M2+) — deny by default until each collection is
-    // opened up explicitly, same pattern as yards above.
+    match /vaccines/{vaccineId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // cows/{cowId} and its vaccinations/{vaccineId} subcollection are still
+    // written only by Cloud Functions (Admin SDK bypasses these rules) until
+    // M3 gives the client its own cows collection to read/write.
+
+    // Not defined yet — deny by default until each collection is opened up
+    // explicitly, same pattern as yards/vaccines above.
     match /{document=**} {
       allow read, write: if false;
     }

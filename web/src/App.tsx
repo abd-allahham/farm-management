@@ -4,6 +4,7 @@ import { ProtectedRoute } from './auth/ProtectedRoute';
 import { isFirebaseConfigured } from './lib/firebase';
 import { AppShell } from './layout/AppShell';
 import { YardsPage } from './features/yards/YardsPage';
+import { VaccinesPage } from './features/vaccines/VaccinesPage';
 import { LoginPage } from './routes/LoginPage';
 import { NeedsConfigPage } from './routes/NeedsConfigPage';
 
@@ -26,6 +27,7 @@ export default function App() {
           >
             <Route index element={<Navigate to="/yards" replace />} />
             <Route path="yards" element={<YardsPage />} />
+            <Route path="vaccines" element={<VaccinesPage />} />
           </Route>
         </Routes>
       </BrowserRouter>
