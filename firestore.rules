@@ -14,17 +14,25 @@ service cloud.firestore {
     }
 
     match /cows/{cowId} {
-      // Create/update go through the createCow/updateCow callables (Admin
-      // SDK, bypasses these rules) so the vaccination fan-out runs
-      // server-side in the same request — see functions/src/cows.ts.
+      // Create/full edit (barcode/birthDate/yardId) go through the
+      // createCow/updateCow callables (Admin SDK, bypasses these rules) so
+      // the vaccination fan-out runs server-side in the same request — see
+      // functions/src/cows.ts. Slaughter/delete (M5) are plain field-scoped
+      // client writes since they have no fan-out to run.
       allow read: if request.auth != null;
-      allow write: if false;
+      allow create, delete: if false;
+      allow update: if request.auth != null &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status', 'slaughteredAt', 'deletedAt']);
 
       match /vaccinations/{vaccineId} {
-        // "vaccinate a cow" (M5) is the only client write these should ever
-        // need; everything else here is server-managed too.
+        // "vaccinate a cow" (M5): the client may only flip status/takenAt —
+        // everything else here (dueDate, birthDate) is server-managed.
         allow read: if request.auth != null;
-        allow write: if false;
+        allow create, delete: if false;
+        allow update: if request.auth != null &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'takenAt']);
       }
     }
 

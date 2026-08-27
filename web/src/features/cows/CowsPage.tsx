@@ -1,10 +1,19 @@
 import { lazy, Suspense, useEffect, useState, type FormEvent } from 'react';
 import { Camera } from 'lucide-react';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { subscribeToYards } from '../yards/api';
 import type { Yard } from '../yards/types';
 import { subscribeToVaccines } from '../vaccines/api';
 import type { Vaccine } from '../vaccines/types';
-import { createCow, subscribeToCowVaccinations, subscribeToCows, updateCow } from './api';
+import {
+  createCow,
+  deleteCow,
+  setVaccinationTaken,
+  slaughterCow,
+  subscribeToCowVaccinations,
+  subscribeToCows,
+  updateCow,
+} from './api';
 import type { Cow, CowVaccination } from './types';
 
 // zxing is a sizeable dependency and most visits never open the scanner, so
@@ -43,6 +52,7 @@ export function CowsPage() {
   const [editDraft, setEditDraft] = useState<CreateDraft>(emptyDraft);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [deletingCow, setDeletingCow] = useState<Cow | null>(null);
 
   useEffect(() => {
     const unsubCows = subscribeToCows(
@@ -65,6 +75,9 @@ export function CowsPage() {
   }, []);
 
   const yardName = (yardId: string) => yards.find((y) => y.id === yardId)?.name ?? '—';
+  // Deleted is a soft-delete state — hide it from the working list (and,
+  // from M7, reports/statistics) without erasing the record.
+  const visibleCows = cows.filter((c) => c.status !== 'deleted');
 
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault();
@@ -103,6 +116,27 @@ export function CowsPage() {
       cancelEditing();
     } catch {
       setError('Could not update the cow. Please try again.');
+    }
+  };
+
+  const handleSlaughter = async (cow: Cow) => {
+    if (!window.confirm(`Mark "${cow.barcode}" as slaughtered? It stays in the system but leaves active duty.`))
+      return;
+    try {
+      await slaughterCow(cow.id);
+    } catch {
+      setError('Could not update the cow. Please try again.');
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingCow) return;
+    try {
+      await deleteCow(deletingCow.id);
+      setDeletingCow(null);
+    } catch {
+      setError('Could not delete the cow. Please try again.');
+      setDeletingCow(null);
     }
   };
 
@@ -171,11 +205,11 @@ export function CowsPage() {
       <ul className="mt-4 divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
         {loading && <li className="px-4 py-3 text-sm text-slate-500">Loading cows…</li>}
 
-        {!loading && cows.length === 0 && (
+        {!loading && visibleCows.length === 0 && (
           <li className="px-4 py-3 text-sm text-slate-500">No cows yet — add one above.</li>
         )}
 
-        {cows.map((cow) => (
+        {visibleCows.map((cow) => (
           <li key={cow.id} className="px-4 py-3">
             <div className="flex items-center justify-between gap-3">
               {editingId === cow.id ? (
@@ -209,14 +243,21 @@ export function CowsPage() {
                   onClick={() => setExpandedId(expandedId === cow.id ? null : cow.id)}
                   className="flex-1 text-left"
                 >
-                  <p className="text-sm text-slate-800">{cow.barcode}</p>
+                  <p className="flex items-center gap-2 text-sm text-slate-800">
+                    {cow.barcode}
+                    {cow.status === 'slaughtered' && (
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">
+                        Slaughtered
+                      </span>
+                    )}
+                  </p>
                   <p className="text-xs text-slate-500">
                     Born {formatDate(cow.birthDate)} · {yardName(cow.yardId)}
                   </p>
                 </button>
               )}
 
-              <div className="flex shrink-0 gap-2">
+              <div className="flex shrink-0 flex-wrap justify-end gap-2">
                 {editingId === cow.id ? (
                   <>
                     <button
@@ -233,12 +274,30 @@ export function CowsPage() {
                     </button>
                   </>
                 ) : (
-                  <button
-                    onClick={() => startEditing(cow)}
-                    className="text-xs font-medium text-slate-500 hover:text-slate-700"
-                  >
-                    Edit
-                  </button>
+                  <>
+                    {cow.status === 'active' && (
+                      <>
+                        <button
+                          onClick={() => startEditing(cow)}
+                          className="text-xs font-medium text-slate-500 hover:text-slate-700"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => void handleSlaughter(cow)}
+                          className="text-xs font-medium text-amber-600 hover:text-amber-700"
+                        >
+                          Slaughter
+                        </button>
+                      </>
+                    )}
+                    <button
+                      onClick={() => setDeletingCow(cow)}
+                      className="text-xs font-medium text-red-600 hover:text-red-700"
+                    >
+                      Delete
+                    </button>
+                  </>
                 )}
               </div>
             </div>
@@ -261,12 +320,25 @@ export function CowsPage() {
           />
         </Suspense>
       )}
+
+      {deletingCow && (
+        <ConfirmDialog
+          title={`Delete "${deletingCow.barcode}"?`}
+          message="This cow will be permanently excluded from reports and statistics. This cannot be undone from here."
+          confirmLabel="Delete permanently"
+          danger
+          onConfirm={() => void handleConfirmDelete()}
+          onCancel={() => setDeletingCow(null)}
+        />
+      )}
     </section>
   );
 }
 
 function CowVaccinationList({ cowId, vaccines }: { cowId: string; vaccines: Vaccine[] }) {
   const [vaccinations, setVaccinations] = useState<CowVaccination[] | null>(null);
+  const [saving, setSaving] = useState<Set<string>>(new Set());
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setVaccinations(null);
@@ -276,6 +348,22 @@ function CowVaccinationList({ cowId, vaccines }: { cowId: string; vaccines: Vacc
   const vaccineName = (vaccineId: string) =>
     vaccines.find((v) => v.id === vaccineId)?.name ?? 'Unknown vaccine';
 
+  const toggle = async (v: CowVaccination) => {
+    setSaving((s) => new Set(s).add(v.vaccineId));
+    setError(null);
+    try {
+      await setVaccinationTaken(cowId, v.vaccineId, v.status !== 'done');
+    } catch {
+      setError('Could not update this vaccine. Please try again.');
+    } finally {
+      setSaving((s) => {
+        const next = new Set(s);
+        next.delete(v.vaccineId);
+        return next;
+      });
+    }
+  };
+
   return (
     <div className="mt-3 rounded-lg bg-slate-50 p-3">
       <p className="text-xs font-medium text-slate-500">Vaccinations</p>
@@ -283,19 +371,20 @@ function CowVaccinationList({ cowId, vaccines }: { cowId: string; vaccines: Vacc
       {vaccinations !== null && vaccinations.length === 0 && (
         <p className="mt-1 text-xs text-slate-400">No vaccines defined yet.</p>
       )}
+      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
       <ul className="mt-1 space-y-1">
         {vaccinations?.map((v) => (
           <li key={v.vaccineId} className="flex items-center justify-between text-xs">
             <span className="text-slate-700">{vaccineName(v.vaccineId)}</span>
-            <span
-              className={
-                v.status === 'done'
-                  ? 'font-medium text-green-700'
-                  : 'font-medium text-amber-600'
-              }
+            <button
+              onClick={() => void toggle(v)}
+              disabled={saving.has(v.vaccineId)}
+              className={`font-medium underline-offset-2 hover:underline disabled:opacity-50 ${
+                v.status === 'done' ? 'text-green-700' : 'text-amber-600'
+              }`}
             >
-              {v.status === 'done' ? 'Done' : `Due ${formatDate(v.dueDate)}`}
-            </span>
+              {v.status === 'done' ? 'Done — undo' : `Due ${formatDate(v.dueDate)} — mark taken`}
+            </button>
           </li>
         ))}
       </ul>
