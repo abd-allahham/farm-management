@@ -408,7 +408,9 @@ function CowVaccinationList({ cowId, vaccines }: { cowId: string; vaccines: Vacc
               <div>
                 <p className="text-sm leading-relaxed text-slate-800">{vaccineName(v.vaccineId)}</p>
                 <p className="text-xs leading-relaxed text-slate-500">
-                  {isDone ? 'Taken' : `Due ${formatDate(v.dueDate)}`}
+                  {isDone
+                    ? `Taken ${v.takenAt ? formatDate(v.takenAt) : ''}`.trim()
+                    : `Due ${formatDate(v.dueDate)}`}
                 </p>
               </div>
 
