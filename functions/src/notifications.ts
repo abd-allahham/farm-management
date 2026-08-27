@@ -23,6 +23,7 @@ async function checkDueVaccinationsAndNotify(): Promise<{ dueCount: number; noti
   }
 
   const tokensSnap = await db.collection('fcmTokens').get();
+  console.log(`checkDueVaccinationsAndNotify: ${tokensSnap.size} registered token(s)`);
   if (tokensSnap.empty) {
     return { dueCount: dueSnap.size, notified: 0 };
   }
@@ -35,6 +36,12 @@ async function checkDueVaccinationsAndNotify(): Promise<{ dueCount: number; noti
       title: 'Vaccination reminders',
       body: `${dueSnap.size} vaccination${plural} due or overdue. Open the app to review.`,
     },
+  });
+
+  response.responses.forEach((r, i) => {
+    if (!r.success) {
+      console.log(`send failed for token ${tokens[i].slice(0, 12)}...: ${r.error?.code} ${r.error?.message}`);
+    }
   });
 
   // Clean up tokens the device/browser has since revoked — otherwise every
