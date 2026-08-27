@@ -69,6 +69,7 @@ export function AppShell() {
 
           <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 pb-24 md:pb-8">
             <NotificationBanner />
+            <NotificationToast />
             <Outlet />
           </main>
 
@@ -90,8 +91,6 @@ export function AppShell() {
             ))}
           </nav>
         </div>
-
-        <NotificationToast />
       </div>
     </NotificationsProvider>
   );

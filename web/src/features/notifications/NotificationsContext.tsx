@@ -29,7 +29,6 @@ function setOptedOut(value: boolean): void {
 interface ReceivedNotification {
   title: string;
   body: string;
-  icon?: 'on' | 'off';
 }
 
 interface NotificationsContextValue {
@@ -79,7 +78,6 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
           setReceived({
             title: 'Notifications enabled',
             body: "You'll be notified when a vaccination is due.",
-            icon: 'on',
           });
         }
       } else if (!silent) {
@@ -105,7 +103,9 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       await cleanupNotificationToken();
       setRegistered(false);
       setOptedOut(true);
-      setReceived({ title: 'Vaccination reminders are turned off.', body: '', icon: 'off' });
+      // No toast here — NotificationBanner already shows "Vaccination
+      // reminders are turned off." persistently once `registered` flips
+      // false, so a toast on top would just be redundant.
     } catch {
       setError('Could not disable notifications. Please try again.');
     } finally {
