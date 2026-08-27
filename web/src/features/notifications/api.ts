@@ -1,6 +1,6 @@
-import { doc, serverTimestamp, setDoc, type Firestore } from 'firebase/firestore';
+import { deleteDoc, doc, serverTimestamp, setDoc, type Firestore } from 'firebase/firestore';
 import { httpsCallable, type Functions } from 'firebase/functions';
-import { getMessaging, getToken, isSupported, onMessage } from 'firebase/messaging';
+import { deleteToken, getMessaging, getToken, isSupported, onMessage } from 'firebase/messaging';
 import { app, auth, db, functions } from '../../lib/firebase';
 
 // Separate scope from the Workbox PWA service worker at "/" — see
@@ -50,6 +50,24 @@ export async function enableNotifications(): Promise<EnableNotificationsResult> 
   });
 
   return 'granted';
+}
+
+// Called from AuthContext.signOut, before the actual Firebase sign-out —
+// deleting the Firestore doc needs an authenticated request. Best-effort:
+// a failure here shouldn't block logout, so callers should swallow errors.
+export async function cleanupNotificationToken(): Promise<void> {
+  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+  if (!(await isNotificationSupported())) return;
+
+  const registration = await navigator.serviceWorker.getRegistration(SW_SCOPE);
+  if (!registration) return;
+
+  const messaging = getMessaging(app);
+  const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: registration });
+  if (!token) return;
+
+  await deleteDoc(doc(requireDb(), 'fcmTokens', token));
+  await deleteToken(messaging);
 }
 
 // FCM delivers a push to the page's onMessage handler instead of the

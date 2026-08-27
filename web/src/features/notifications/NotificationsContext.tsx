@@ -1,0 +1,111 @@
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { useAuth } from '../../auth/AuthContext';
+import { enableNotifications, isNotificationSupported, listenForForegroundMessages } from './api';
+
+const isIos = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+interface ReceivedNotification {
+  title: string;
+  body: string;
+}
+
+interface NotificationsContextValue {
+  supported: boolean | null;
+  // Browser permission alone isn't proof a token was ever saved (see the
+  // bug this fixed) — `registered` only flips true once enableNotifications
+  // has actually confirmed a token made it into Firestore.
+  registered: boolean;
+  permission: NotificationPermission;
+  busy: boolean;
+  error: string | null;
+  retry: () => void;
+  received: ReceivedNotification | null;
+  dismissReceived: () => void;
+}
+
+const NotificationsContext = createContext<NotificationsContextValue | undefined>(undefined);
+
+// Single source of truth for notification state, shared by NotificationBell
+// (icon + manual retry), NotificationBanner (persistent warning while
+// disabled), and NotificationToast (foreground push display) — each reading
+// the same context instead of duplicating registration/listener logic.
+export function NotificationsProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  const [supported, setSupported] = useState<boolean | null>(null);
+  const [registered, setRegistered] = useState(false);
+  const [permission, setPermission] = useState<NotificationPermission>('default');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [received, setReceived] = useState<ReceivedNotification | null>(null);
+
+  const attempt = async (silent: boolean) => {
+    setBusy(true);
+    if (!silent) setError(null);
+    try {
+      const result = await enableNotifications();
+      if (typeof Notification !== 'undefined') setPermission(Notification.permission);
+      if (result === 'granted') {
+        setRegistered(true);
+        setError(null);
+      } else if (!silent) {
+        setError(
+          result === 'denied'
+            ? 'Notifications were blocked. Check your browser/OS notification settings for this app.'
+            : isIos()
+              ? 'Install the app to your home screen first (see "Download the app" on the login screen), then try again from there.'
+              : "Notifications aren't supported in this browser.",
+        );
+      }
+    } catch {
+      if (!silent) setError('Could not enable notifications. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Runs once per authenticated session (AppShell, which mounts this
+  // provider, doesn't remount on in-app navigation — only on login/logout).
+  // Already granted: self-heal (see the bug above). Never asked: prompt
+  // automatically, per your ask, instead of waiting for a manual bell tap.
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    isNotificationSupported().then((ok) => {
+      if (cancelled) return;
+      setSupported(ok);
+      if (!ok || typeof Notification === 'undefined') return;
+      const current = Notification.permission;
+      setPermission(current);
+      if (current === 'granted') void attempt(true);
+      else if (current === 'default') void attempt(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  useEffect(() => {
+    if (!registered) return;
+    return listenForForegroundMessages((title, body) => setReceived({ title, body }));
+  }, [registered]);
+
+  const value: NotificationsContextValue = {
+    supported,
+    registered,
+    permission,
+    busy,
+    error,
+    retry: () => void attempt(false),
+    received,
+    dismissReceived: () => setReceived(null),
+  };
+
+  return <NotificationsContext.Provider value={value}>{children}</NotificationsContext.Provider>;
+}
+
+export function useNotifications(): NotificationsContextValue {
+  const ctx = useContext(NotificationsContext);
+  if (!ctx) throw new Error('useNotifications must be used within a NotificationsProvider');
+  return ctx;
+}
