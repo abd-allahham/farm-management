@@ -65,8 +65,17 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
   // Runs once per authenticated session (AppShell, which mounts this
   // provider, doesn't remount on in-app navigation — only on login/logout).
-  // Already granted: self-heal (see the bug above). Never asked: prompt
-  // automatically, per your ask, instead of waiting for a manual bell tap.
+  //
+  // Already granted: self-heal (see the bug above) — requestPermission()
+  // resolves trivially with no dialog when the decision is already made, so
+  // this needs no user gesture.
+  //
+  // Never asked ('default'): browsers require a real click to show the
+  // actual permission dialog — calling requestPermission() from here (no
+  // gesture) gets silently auto-resolved as if denied, without ever
+  // prompting. So instead of attempting it, just leave permission as
+  // 'default' — NotificationBanner shows an immediate "Enable" prompt, and
+  // that click is what satisfies the gesture requirement.
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -77,7 +86,6 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       const current = Notification.permission;
       setPermission(current);
       if (current === 'granted') void attempt(true);
-      else if (current === 'default') void attempt(false);
     });
     return () => {
       cancelled = true;
