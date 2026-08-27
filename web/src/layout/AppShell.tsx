@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
+import { NotificationBell } from '../features/notifications/NotificationBell';
 import { navItems } from './navItems';
 
 const linkBase = 'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition';
@@ -33,7 +34,10 @@ export function AppShell() {
         </nav>
 
         <div className="border-t border-slate-200 px-4 py-3">
-          <p className="truncate text-xs text-slate-500">{user?.displayName ?? user?.email}</p>
+          <div className="flex items-center justify-between">
+            <p className="truncate text-xs text-slate-500">{user?.displayName ?? user?.email}</p>
+            <NotificationBell />
+          </div>
           <button
             onClick={() => void signOut()}
             className="mt-2 flex items-center gap-2 text-xs font-medium text-slate-500 hover:text-slate-700"
@@ -48,12 +52,15 @@ export function AppShell() {
         {/* Mobile top bar */}
         <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 md:hidden">
           <span className="text-sm font-semibold text-slate-900">Farm Management</span>
-          <button
-            onClick={() => void signOut()}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-          >
-            Sign out
-          </button>
+          <div className="flex items-center gap-1">
+            <NotificationBell />
+            <button
+              onClick={() => void signOut()}
+              className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Sign out
+            </button>
+          </div>
         </header>
 
         <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 pb-24 md:pb-8">
