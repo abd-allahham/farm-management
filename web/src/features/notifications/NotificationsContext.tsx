@@ -71,6 +71,15 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         setRegistered(true);
         setError(null);
         setOptedOut(false);
+        // Confirm the explicit enable action (bell/banner click) — not the
+        // silent self-heal check that runs on every login, which would
+        // otherwise show this on every visit rather than just the toggle.
+        if (!silent) {
+          setReceived({
+            title: 'Notifications enabled',
+            body: "You'll be notified when a vaccination is due.",
+          });
+        }
       } else if (!silent) {
         setError(
           result === 'denied'
