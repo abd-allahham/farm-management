@@ -1,6 +1,7 @@
 import { initializeApp, type FirebaseOptions } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getFunctions } from 'firebase/functions';
 
 // Populated from web/.env (copy web/.env.example -> web/.env and fill in
 // the values from Firebase console > Project settings > General > Your apps).
@@ -30,4 +31,6 @@ export const app = initializeApp(firebaseConfig);
 // "not configured yet" screen. Only initialize them once real config exists.
 export const auth = isFirebaseConfigured ? getAuth(app) : null;
 export const db = isFirebaseConfigured ? getFirestore(app) : null;
+// Must match the region the callables in functions/src/cows.ts deploy to.
+export const functions = isFirebaseConfigured ? getFunctions(app, 'europe-central2') : null;
 export const googleProvider = new GoogleAuthProvider();
