@@ -8,7 +8,7 @@ interface Props {
 }
 
 export function NotificationBell({ className = '' }: Props) {
-  const { supported, registered, busy, error, retry } = useNotifications();
+  const { supported, registered, busy, error, retry, disable } = useNotifications();
   const [testBusy, setTestBusy] = useState(false);
   const [testResult, setTestResult] = useState<string | null>(null);
 
@@ -37,10 +37,11 @@ export function NotificationBell({ className = '' }: Props) {
     <div className={className}>
       <div className="flex items-center gap-1">
         <button
-          onClick={retry}
+          onClick={registered ? disable : retry}
           disabled={busy}
-          title={registered ? 'Daily vaccination reminders enabled (tap to re-check)' : 'Enable daily vaccination reminders'}
-          aria-label={registered ? 'Notifications enabled' : 'Enable notifications'}
+          title={registered ? 'Daily vaccination reminders enabled — tap to disable' : 'Enable daily vaccination reminders'}
+          aria-label={registered ? 'Disable notifications' : 'Enable notifications'}
+          aria-pressed={registered}
           className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 disabled:cursor-default"
         >
           {registered ? (

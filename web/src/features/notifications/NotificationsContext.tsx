@@ -1,8 +1,30 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { useAuth } from '../../auth/AuthContext';
-import { enableNotifications, isNotificationSupported, listenForForegroundMessages } from './api';
+import { cleanupNotificationToken, enableNotifications, isNotificationSupported, listenForForegroundMessages } from './api';
 
 const isIos = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+// Browser permission alone can't tell "never asked" apart from "user
+// deliberately turned it off in-app" — both leave Notification.permission
+// at 'granted' once it's been granted once. Without this flag, the
+// self-heal-on-mount effect below would silently re-register an opted-out
+// user on their very next page load.
+const OPT_OUT_KEY = 'notifications-opted-out';
+function isOptedOut(): boolean {
+  try {
+    return localStorage.getItem(OPT_OUT_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+function setOptedOut(value: boolean): void {
+  try {
+    if (value) localStorage.setItem(OPT_OUT_KEY, '1');
+    else localStorage.removeItem(OPT_OUT_KEY);
+  } catch {
+    // ignore — worst case the self-heal silently re-enables on next load
+  }
+}
 
 interface ReceivedNotification {
   title: string;
@@ -19,6 +41,7 @@ interface NotificationsContextValue {
   busy: boolean;
   error: string | null;
   retry: () => void;
+  disable: () => void;
   received: ReceivedNotification | null;
   dismissReceived: () => void;
 }
@@ -47,6 +70,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       if (result === 'granted') {
         setRegistered(true);
         setError(null);
+        setOptedOut(false);
       } else if (!silent) {
         setError(
           result === 'denied'
@@ -63,12 +87,26 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const disable = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await cleanupNotificationToken();
+      setRegistered(false);
+      setOptedOut(true);
+    } catch {
+      setError('Could not disable notifications. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   // Runs once per authenticated session (AppShell, which mounts this
   // provider, doesn't remount on in-app navigation — only on login/logout).
   //
-  // Already granted: self-heal (see the bug above) — requestPermission()
-  // resolves trivially with no dialog when the decision is already made, so
-  // this needs no user gesture.
+  // Already granted (and not opted out): self-heal (see the bug above) —
+  // requestPermission() resolves trivially with no dialog when the
+  // decision is already made, so this needs no user gesture.
   //
   // Never asked ('default'): browsers require a real click to show the
   // actual permission dialog — calling requestPermission() from here (no
@@ -85,7 +123,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       if (!ok || typeof Notification === 'undefined') return;
       const current = Notification.permission;
       setPermission(current);
-      if (current === 'granted') void attempt(true);
+      if (current === 'granted' && !isOptedOut()) void attempt(true);
     });
     return () => {
       cancelled = true;
@@ -105,6 +143,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     busy,
     error,
     retry: () => void attempt(false),
+    disable: () => void disable(),
     received,
     dismissReceived: () => setReceived(null),
   };

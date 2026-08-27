@@ -10,9 +10,18 @@ import { useNotifications } from './NotificationsContext';
 export function NotificationBanner() {
   const { supported, registered, permission, busy, retry } = useNotifications();
 
-  if (supported === false || registered || permission === 'granted') return null;
+  if (supported === false || registered) return null;
 
+  // Browser permission alone can't distinguish "blocked" from "the user
+  // turned this off in-app" — both leave permission at 'denied'/'granted'
+  // respectively however they got there, so message off of `permission`
+  // directly rather than assuming denied === blocked.
   const denied = permission === 'denied';
+  const message = denied
+    ? "Vaccination reminders are off — you won't be notified about due vaccines."
+    : permission === 'granted'
+      ? 'Vaccination reminders are turned off.'
+      : 'Get notified when a vaccination is due — enable reminders for this app.';
 
   return (
     <div
@@ -22,11 +31,7 @@ export function NotificationBanner() {
     >
       <div className="flex items-center gap-2">
         {denied ? <BellOff size={16} className="shrink-0" aria-hidden /> : <Bell size={16} className="shrink-0" aria-hidden />}
-        <span>
-          {denied
-            ? "Vaccination reminders are off — you won't be notified about due vaccines."
-            : 'Get notified when a vaccination is due — enable reminders for this app.'}
-        </span>
+        <span>{message}</span>
       </div>
       <button
         onClick={retry}
