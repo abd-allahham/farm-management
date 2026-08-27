@@ -1,11 +1,16 @@
 rules_version = '2';
 
-// M0: no collections defined yet — deny everything by default.
-// M1 (Yards CRUD) will open this up to: request.auth != null (single-farm,
-// single/testing user for now — see README for the planned evolution to
-// role-based rules once multiple users are added).
+// Single farm, single/testing user for now: any authenticated user has full
+// access. A `role` field + per-farm scoping can be layered on to these rules
+// later without a data model rewrite (see README).
 service cloud.firestore {
   match /databases/{database}/documents {
+    match /yards/{yardId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Not defined yet (M2+) — deny by default until each collection is
+    // opened up explicitly, same pattern as yards above.
     match /{document=**} {
       allow read, write: if false;
     }
