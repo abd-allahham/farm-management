@@ -1,10 +1,15 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { lazy, Suspense, useEffect, useState, type FormEvent } from 'react';
+import { Camera } from 'lucide-react';
 import { subscribeToYards } from '../yards/api';
 import type { Yard } from '../yards/types';
 import { subscribeToVaccines } from '../vaccines/api';
 import type { Vaccine } from '../vaccines/types';
 import { createCow, subscribeToCowVaccinations, subscribeToCows, updateCow } from './api';
 import type { Cow, CowVaccination } from './types';
+
+// zxing is a sizeable dependency and most visits never open the scanner, so
+// it's only fetched once the user actually taps the camera button.
+const BarcodeScannerModal = lazy(() => import('./BarcodeScannerModal'));
 
 function toDateInputValue(ms: number): string {
   return new Date(ms).toISOString().slice(0, 10);
@@ -37,6 +42,7 @@ export function CowsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<CreateDraft>(emptyDraft);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [scannerOpen, setScannerOpen] = useState(false);
 
   useEffect(() => {
     const unsubCows = subscribeToCows(
@@ -108,12 +114,23 @@ export function CowsPage() {
       </p>
 
       <form onSubmit={handleCreate} className="mt-4 flex flex-wrap gap-2">
-        <input
-          value={draft.barcode}
-          onChange={(e) => setDraft((d) => ({ ...d, barcode: e.target.value }))}
-          placeholder="Ear tag / barcode"
-          className="min-w-40 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-green-600"
-        />
+        <div className="flex min-w-40 flex-1 gap-2">
+          <input
+            value={draft.barcode}
+            onChange={(e) => setDraft((d) => ({ ...d, barcode: e.target.value }))}
+            placeholder="Ear tag / barcode"
+            className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-green-600"
+          />
+          <button
+            type="button"
+            onClick={() => setScannerOpen(true)}
+            title="Scan barcode with camera"
+            aria-label="Scan barcode with camera"
+            className="rounded-lg border border-slate-300 px-3 text-slate-600 transition hover:bg-slate-50"
+          >
+            <Camera size={18} aria-hidden />
+          </button>
+        </div>
         <input
           value={draft.birthDate}
           onChange={(e) => setDraft((d) => ({ ...d, birthDate: e.target.value }))}
@@ -228,6 +245,18 @@ export function CowsPage() {
           </li>
         ))}
       </ul>
+
+      {scannerOpen && (
+        <Suspense fallback={null}>
+          <BarcodeScannerModal
+            onDetected={(barcode) => {
+              setDraft((d) => ({ ...d, barcode }));
+              setScannerOpen(false);
+            }}
+            onClose={() => setScannerOpen(false)}
+          />
+        </Suspense>
+      )}
     </section>
   );
 }
