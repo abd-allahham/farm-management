@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Bell, BellRing } from 'lucide-react';
-import { enableNotifications, isNotificationSupported, triggerVaccinationCheck } from './api';
+import {
+  enableNotifications,
+  isNotificationSupported,
+  listenForForegroundMessages,
+  triggerVaccinationCheck,
+} from './api';
 
 const isIos = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
 
@@ -14,11 +19,26 @@ export function NotificationBell({ className = '' }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<string | null>(null);
+  const [received, setReceived] = useState<{ title: string; body: string } | null>(null);
 
   useEffect(() => {
     isNotificationSupported().then(setSupported);
     if (typeof Notification !== 'undefined') setStatus(Notification.permission);
   }, []);
+
+  useEffect(() => {
+    if (status !== 'granted') return;
+    return listenForForegroundMessages((title, body) => {
+      setReceived({ title, body });
+      // Best-effort: some browsers/OSes suppress this while the tab has
+      // focus. The in-app banner below is the reliable fallback.
+      try {
+        new Notification(title, { body, icon: '/pwa-192.png' });
+      } catch {
+        // ignore
+      }
+    });
+  }, [status]);
 
   // Nothing meaningful to offer where push isn't possible at all (e.g. iOS
   // Safari running in a regular tab, not installed) — don't clutter the UI.
@@ -96,6 +116,12 @@ export function NotificationBell({ className = '' }: Props) {
 
       {error && <p className="mt-1 max-w-52 text-xs text-red-600">{error}</p>}
       {testResult && <p className="mt-1 max-w-52 text-xs text-slate-500">{testResult}</p>}
+      {received && (
+        <p className="mt-1 max-w-52 rounded-lg bg-green-50 px-2 py-1.5 text-xs text-green-800">
+          🔔 <span className="font-medium">{received.title}</span>
+          {received.body && <>: {received.body}</>}
+        </p>
+      )}
     </div>
   );
 }
