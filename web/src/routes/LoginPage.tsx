@@ -1,8 +1,12 @@
 import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import { isInAppBrowser, isMissingInitialStateError } from '../lib/inAppBrowser';
 import { useInstallPrompt } from '../lib/useInstallPrompt';
 import { useIsStandalone } from '../lib/useIsStandalone';
+
+const IN_APP_BROWSER_MESSAGE =
+  "Google sign-in doesn't work reliably inside another app's built-in browser. Tap the ••• or share icon above and choose \"Open in Safari\" (or \"Open in Chrome\"), then try again.";
 
 export function LoginPage() {
   const { user, loading, signInWithGoogle } = useAuth();
@@ -11,6 +15,7 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [showInstallHelp, setShowInstallHelp] = useState(false);
   const [checkingInstall, setCheckingInstall] = useState(false);
+  const [inAppBrowser] = useState(isInAppBrowser);
 
   if (!loading && user) {
     return <Navigate to="/" replace />;
@@ -20,8 +25,10 @@ export function LoginPage() {
     setError(null);
     try {
       await signInWithGoogle();
-    } catch {
-      setError('Sign-in failed. Please try again.');
+    } catch (err) {
+      setError(
+        isMissingInitialStateError(err) ? IN_APP_BROWSER_MESSAGE : 'Sign-in failed. Please try again.',
+      );
     }
   };
 
@@ -49,6 +56,12 @@ export function LoginPage() {
         <div className="mx-auto mb-4 h-14 w-14 rounded-xl bg-green-700" aria-hidden />
         <h1 className="text-xl font-semibold text-slate-900">Farm Management</h1>
         <p className="mt-1 text-sm text-slate-500">Cattle & vaccination tracking</p>
+
+        {inAppBrowser && (
+          <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-left text-xs text-amber-800">
+            {IN_APP_BROWSER_MESSAGE}
+          </p>
+        )}
 
         <div className="mt-8 flex flex-col gap-3">
           <button
