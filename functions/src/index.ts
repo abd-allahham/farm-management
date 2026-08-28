@@ -15,5 +15,7 @@ export { onVaccineCreated, onVaccineUpdated, onVaccineDeleted } from './vaccines
 // writes) — create/update need the vaccination fan-out to run server-side
 // in the same request, delete needs a recursive subcollection delete the
 // client can't do itself. See cows.ts for details.
-// Still to come: dailyVaccinationCheck (scheduled 08:00, M6) push notifications.
 export { createCow, updateCow, deleteCow } from './cows.js';
+
+// M6: daily 08:00 UTC due-vaccination push notifications.
+export { dailyVaccinationCheck } from './notifications.js';

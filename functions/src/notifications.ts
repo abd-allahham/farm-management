@@ -1,0 +1,67 @@
+import { getFirestore } from 'firebase-admin/firestore';
+import { getMessaging } from 'firebase-admin/messaging';
+import { onSchedule } from 'firebase-functions/v2/scheduler';
+
+const REGION = 'europe-central2';
+
+// Scans every cow's vaccinations subcollection (via collection group) for
+// still-pending entries whose dueDate has arrived, and pushes one summary
+// notification per registered device if any are found.
+async function checkDueVaccinationsAndNotify(): Promise<{ dueCount: number; notified: number }> {
+  const db = getFirestore();
+
+  const dueSnap = await db
+    .collectionGroup('vaccinations')
+    .where('status', '==', 'pending')
+    .where('dueDate', '<=', Date.now())
+    .get();
+
+  if (dueSnap.empty) {
+    return { dueCount: 0, notified: 0 };
+  }
+
+  const tokensSnap = await db.collection('fcmTokens').get();
+  console.log(`checkDueVaccinationsAndNotify: ${tokensSnap.size} registered token(s)`);
+  if (tokensSnap.empty) {
+    return { dueCount: dueSnap.size, notified: 0 };
+  }
+
+  const tokens = tokensSnap.docs.map((d) => d.id);
+  const plural = dueSnap.size === 1 ? '' : 's';
+  const response = await getMessaging().sendEachForMulticast({
+    tokens,
+    notification: {
+      title: 'Vaccination reminders',
+      body: `${dueSnap.size} vaccination${plural} due or overdue. Open the app to review.`,
+    },
+    // Without these, Android's Doze/App Standby can quietly deprioritize or
+    // delay a background push — high priority asks it to wake and deliver
+    // right away instead.
+    android: { priority: 'high' },
+    webpush: { headers: { Urgency: 'high' } },
+  });
+
+  response.responses.forEach((r, i) => {
+    if (!r.success) {
+      console.log(`send failed for token ${tokens[i].slice(0, 12)}...: ${r.error?.code} ${r.error?.message}`);
+    }
+  });
+
+  // Clean up tokens the device/browser has since revoked — otherwise every
+  // future run keeps paying the (small) cost of a doomed send.
+  const staleTokens = response.responses
+    .map((r, i) => (!r.success && r.error?.code === 'messaging/registration-token-not-registered' ? tokens[i] : null))
+    .filter((t): t is string => t !== null);
+  await Promise.all(staleTokens.map((t) => db.collection('fcmTokens').doc(t).delete()));
+
+  return { dueCount: dueSnap.size, notified: response.successCount };
+}
+
+// Daily 08:00 UTC — adjust the timeZone below if the farm is elsewhere.
+export const dailyVaccinationCheck = onSchedule(
+  { schedule: '0 8 * * *', timeZone: 'UTC', region: REGION },
+  async () => {
+    const result = await checkDueVaccinationsAndNotify();
+    console.log(`dailyVaccinationCheck: ${result.dueCount} due, ${result.notified} devices notified`);
+  },
+);

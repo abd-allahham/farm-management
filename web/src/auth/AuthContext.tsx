@@ -12,6 +12,7 @@ import {
   type User,
 } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
+import { cleanupNotificationToken } from '../features/notifications/api';
 
 interface AuthContextValue {
   user: User | null;
@@ -47,6 +48,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     if (!auth) throw new Error('Firebase is not configured.');
+    // Must run before firebaseSignOut — deleting the Firestore token doc
+    // needs an authenticated request. Best-effort: a stale token left
+    // behind isn't worth blocking sign-out over.
+    await cleanupNotificationToken().catch(() => {});
     await firebaseSignOut(auth);
   };
 
