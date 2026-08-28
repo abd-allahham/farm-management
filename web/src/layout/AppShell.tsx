@@ -1,5 +1,5 @@
-import { NavLink, Outlet } from 'react-router-dom';
-import { LogOut } from 'lucide-react';
+import { Link, NavLink, Outlet } from 'react-router-dom';
+import { LogOut, ScanBarcode } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { NotificationBanner } from '../features/notifications/NotificationBanner';
 import { NotificationBell } from '../features/notifications/NotificationBell';
@@ -23,6 +23,16 @@ export function AppShell() {
           <div className="flex items-center gap-2 px-4 py-4">
             <div className="h-8 w-8 rounded-lg bg-green-700" aria-hidden />
             <span className="text-sm font-semibold text-slate-900">Farm Management</span>
+          </div>
+
+          <div className="px-3">
+            <Link
+              to="/scan"
+              className="mb-2 flex items-center justify-center gap-2 rounded-lg bg-green-700 px-3 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-green-800"
+            >
+              <ScanBarcode size={18} aria-hidden />
+              Scan a cow
+            </Link>
           </div>
 
           <nav className="flex-1 space-y-1 px-3">
@@ -74,9 +84,36 @@ export function AppShell() {
             <Outlet />
           </main>
 
-          {/* Mobile bottom tab bar */}
-          <nav className="fixed inset-x-0 bottom-0 flex border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden">
-            {navItems.map(({ to, label, icon: Icon }) => (
+          {/* Mobile bottom tab bar — "Scan a cow" gets a raised circular
+              button in the middle instead of a regular tab, since it's the
+              primary quick action, not just another section. */}
+          <nav className="fixed inset-x-0 bottom-0 flex items-center border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden">
+            {navItems.slice(0, Math.ceil(navItems.length / 2)).map(({ to, label, icon: Icon }) => (
+              <NavLink
+                key={to}
+                to={to}
+                className={({ isActive }) =>
+                  `flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium ${
+                    isActive ? 'text-green-800' : 'text-slate-500'
+                  }`
+                }
+              >
+                <Icon size={20} aria-hidden />
+                {label}
+              </NavLink>
+            ))}
+
+            <div className="flex flex-1 justify-center">
+              <Link
+                to="/scan"
+                aria-label="Scan a cow"
+                className="relative -top-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-700 text-white shadow-lg ring-4 ring-white transition hover:bg-green-800"
+              >
+                <ScanBarcode size={24} aria-hidden />
+              </Link>
+            </div>
+
+            {navItems.slice(Math.ceil(navItems.length / 2)).map(({ to, label, icon: Icon }) => (
               <NavLink
                 key={to}
                 to={to}
