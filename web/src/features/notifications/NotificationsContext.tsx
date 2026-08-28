@@ -26,7 +26,7 @@ function setOptedOut(value: boolean): void {
   }
 }
 
-interface ReceivedNotification {
+interface Message {
   title: string;
   body: string;
 }
@@ -42,16 +42,24 @@ interface NotificationsContextValue {
   error: string | null;
   retry: () => void;
   disable: () => void;
-  received: ReceivedNotification | null;
-  dismissReceived: () => void;
+  // Enable/disable confirmations — rendered inline, banner-style
+  // (NotificationToast, despite the name — see its own comment).
+  actionMessage: Message | null;
+  dismissActionMessage: () => void;
+  // Real foreground FCM pushes — rendered as a floating card
+  // (NotificationPushToast), kept visually distinct from the confirmations
+  // above since actual push content deserves more attention/reading time.
+  pushMessage: Message | null;
+  dismissPushMessage: () => void;
 }
 
 const NotificationsContext = createContext<NotificationsContextValue | undefined>(undefined);
 
 // Single source of truth for notification state, shared by NotificationBell
-// (icon + manual retry), NotificationBanner (persistent warning while
-// disabled), and NotificationToast (foreground push display) — each reading
-// the same context instead of duplicating registration/listener logic.
+// (menu + manual retry/disable), NotificationBanner (persistent warning
+// while disabled), NotificationToast (enable/disable confirmations), and
+// NotificationPushToast (real foreground push display) — each reading the
+// same context instead of duplicating registration/listener logic.
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [supported, setSupported] = useState<boolean | null>(null);
@@ -59,7 +67,8 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [received, setReceived] = useState<ReceivedNotification | null>(null);
+  const [actionMessage, setActionMessage] = useState<Message | null>(null);
+  const [pushMessage, setPushMessage] = useState<Message | null>(null);
 
   const attempt = async (silent: boolean) => {
     setBusy(true);
@@ -75,7 +84,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         // silent self-heal check that runs on every login, which would
         // otherwise show this on every visit rather than just the toggle.
         if (!silent) {
-          setReceived({
+          setActionMessage({
             title: 'Notifications enabled',
             body: "You'll be notified when a vaccination is due.",
           });
@@ -103,9 +112,9 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       await cleanupNotificationToken();
       setRegistered(false);
       setOptedOut(true);
-      // No toast here — NotificationBanner already shows "Vaccination
+      // No confirmation here — NotificationBanner already shows "Vaccination
       // reminders are turned off." persistently once `registered` flips
-      // false, so a toast on top would just be redundant.
+      // false, so a separate confirmation on top would just be redundant.
     } catch {
       setError('Could not disable notifications. Please try again.');
     } finally {
@@ -145,7 +154,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!registered) return;
-    return listenForForegroundMessages((title, body) => setReceived({ title, body }));
+    return listenForForegroundMessages((title, body) => setPushMessage({ title, body }));
   }, [registered]);
 
   const value: NotificationsContextValue = {
@@ -156,8 +165,10 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     error,
     retry: () => void attempt(false),
     disable: () => void disable(),
-    received,
-    dismissReceived: () => setReceived(null),
+    actionMessage,
+    dismissActionMessage: () => setActionMessage(null),
+    pushMessage,
+    dismissPushMessage: () => setPushMessage(null),
   };
 
   return <NotificationsContext.Provider value={value}>{children}</NotificationsContext.Provider>;

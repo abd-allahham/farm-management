@@ -4,20 +4,21 @@ import { useNotifications } from './NotificationsContext';
 
 const AUTO_DISMISS_MS = 2500;
 
-// Same visual language as NotificationBanner (border/bg/icon/text), rendered
-// inline in the content flow rather than a floating overlay card — just
-// without the Enable button, since this is a transient confirmation that
-// dismisses itself rather than something needing an action.
+// Enable/disable confirmations only — real foreground pushes use
+// NotificationPushToast instead (floating card, more reading time).
+// Same visual language as NotificationBanner (border/bg/icon/text),
+// rendered inline in the content flow rather than a floating overlay card —
+// no button, since this is a transient confirmation that dismisses itself.
 export function NotificationToast() {
-  const { received, dismissReceived } = useNotifications();
+  const { actionMessage, dismissActionMessage } = useNotifications();
 
   useEffect(() => {
-    if (!received) return;
-    const timer = setTimeout(dismissReceived, AUTO_DISMISS_MS);
+    if (!actionMessage) return;
+    const timer = setTimeout(dismissActionMessage, AUTO_DISMISS_MS);
     return () => clearTimeout(timer);
-  }, [received, dismissReceived]);
+  }, [actionMessage, dismissActionMessage]);
 
-  if (!received) return null;
+  if (!actionMessage) return null;
 
   return (
     <div
@@ -26,8 +27,8 @@ export function NotificationToast() {
     >
       <Bell size={16} className="shrink-0" aria-hidden />
       <span>
-        {received.title}
-        {received.body && ` ${received.body}`}
+        {actionMessage.title}
+        {actionMessage.body && ` ${actionMessage.body}`}
       </span>
     </div>
   );

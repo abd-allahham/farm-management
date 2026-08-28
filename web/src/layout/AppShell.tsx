@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext';
 import { NotificationBanner } from '../features/notifications/NotificationBanner';
 import { NotificationBell } from '../features/notifications/NotificationBell';
 import { NotificationsProvider } from '../features/notifications/NotificationsContext';
+import { NotificationPushToast } from '../features/notifications/NotificationPushToast';
 import { NotificationToast } from '../features/notifications/NotificationToast';
 import { navItems } from './navItems';
 
@@ -91,6 +92,8 @@ export function AppShell() {
             ))}
           </nav>
         </div>
+
+        <NotificationPushToast />
       </div>
     </NotificationsProvider>
   );
