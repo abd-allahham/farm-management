@@ -1,7 +1,6 @@
 import { deleteDoc, doc, serverTimestamp, setDoc, type Firestore } from 'firebase/firestore';
-import { httpsCallable, type Functions } from 'firebase/functions';
 import { deleteToken, getMessaging, getToken, isSupported, onMessage } from 'firebase/messaging';
-import { app, auth, db, functions } from '../../lib/firebase';
+import { app, auth, db } from '../../lib/firebase';
 
 // Separate scope from the Workbox PWA service worker at "/" — see
 // public/firebase-messaging-sw.js for why they can't share one.
@@ -11,11 +10,6 @@ const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY;
 function requireDb(): Firestore {
   if (!db) throw new Error('Firestore is not configured.');
   return db;
-}
-
-function requireFunctions(): Functions {
-  if (!functions) throw new Error('Cloud Functions are not configured.');
-  return functions;
 }
 
 export async function isNotificationSupported(): Promise<boolean> {
@@ -72,9 +66,8 @@ export async function cleanupNotificationToken(): Promise<void> {
 
 // FCM delivers a push to the page's onMessage handler instead of the
 // service worker's background handler whenever the tab is in the
-// foreground — which is exactly the case right after tapping "Send test"
-// from inside the app. Without this, that push arrives and is silently
-// dropped: the server-side send succeeds, nothing visible happens.
+// foreground. Without this, a push arriving while the app is open would be
+// silently dropped: the server-side send succeeds, nothing visible happens.
 export function listenForForegroundMessages(
   onNotification: (title: string, body: string) => void,
 ): () => void {
@@ -82,16 +75,4 @@ export function listenForForegroundMessages(
   return onMessage(messaging, (payload) => {
     onNotification(payload.notification?.title ?? 'Farm Management', payload.notification?.body ?? '');
   });
-}
-
-// Runs the same scan the daily 08:00 UTC schedule does, right now — lets
-// the app confirm the whole pipeline (query -> push -> device) works
-// without waiting for the actual scheduled time.
-export async function triggerVaccinationCheck(): Promise<{ dueCount: number; notified: number }> {
-  const call = httpsCallable<undefined, { dueCount: number; notified: number }>(
-    requireFunctions(),
-    'triggerVaccinationCheck',
-  );
-  const result = await call();
-  return result.data;
 }

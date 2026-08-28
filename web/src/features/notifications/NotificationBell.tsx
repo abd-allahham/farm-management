@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { Bell, BellRing } from 'lucide-react';
-import { triggerVaccinationCheck } from './api';
 import { useNotifications } from './NotificationsContext';
 
 interface Props {
@@ -14,8 +13,6 @@ interface Props {
 export function NotificationBell({ className = '', menuPlacement = 'down' }: Props) {
   const { supported, registered, busy, error, retry, disable } = useNotifications();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [testBusy, setTestBusy] = useState(false);
-  const [testResult, setTestResult] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -37,24 +34,6 @@ export function NotificationBell({ className = '', menuPlacement = 'down' }: Pro
     setMenuOpen(false);
     if (registered) disable();
     else retry();
-  };
-
-  const handleTest = async () => {
-    setMenuOpen(false);
-    setTestBusy(true);
-    setTestResult(null);
-    try {
-      const { dueCount, notified } = await triggerVaccinationCheck();
-      setTestResult(
-        dueCount === 0
-          ? 'No vaccinations are due right now — nothing to send.'
-          : `${dueCount} due — push sent to ${notified} device${notified === 1 ? '' : 's'}.`,
-      );
-    } catch {
-      setTestResult('Test run failed. Please try again.');
-    } finally {
-      setTestBusy(false);
-    }
   };
 
   return (
@@ -89,21 +68,10 @@ export function NotificationBell({ className = '', menuPlacement = 'down' }: Pro
           >
             {registered ? 'Disable notifications' : 'Enable notifications'}
           </button>
-          {registered && (
-            <button
-              role="menuitem"
-              onClick={() => void handleTest()}
-              disabled={testBusy}
-              className="block w-full px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
-            >
-              Send test
-            </button>
-          )}
         </div>
       )}
 
       {error && <p className="mt-1 max-w-52 text-xs text-red-600">{error}</p>}
-      {testResult && <p className="mt-1 max-w-52 text-xs text-slate-500">{testResult}</p>}
     </div>
   );
 }

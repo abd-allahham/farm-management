@@ -1,14 +1,12 @@
 import { getFirestore } from 'firebase-admin/firestore';
 import { getMessaging } from 'firebase-admin/messaging';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
-import { HttpsError, onCall } from 'firebase-functions/v2/https';
 
 const REGION = 'europe-central2';
 
 // Scans every cow's vaccinations subcollection (via collection group) for
 // still-pending entries whose dueDate has arrived, and pushes one summary
-// notification per registered device if any are found. Shared by the daily
-// schedule and the manual test-trigger callable below.
+// notification per registered device if any are found.
 async function checkDueVaccinationsAndNotify(): Promise<{ dueCount: number; notified: number }> {
   const db = getFirestore();
 
@@ -36,6 +34,11 @@ async function checkDueVaccinationsAndNotify(): Promise<{ dueCount: number; noti
       title: 'Vaccination reminders',
       body: `${dueSnap.size} vaccination${plural} due or overdue. Open the app to review.`,
     },
+    // Without these, Android's Doze/App Standby can quietly deprioritize or
+    // delay a background push — high priority asks it to wake and deliver
+    // right away instead.
+    android: { priority: 'high' },
+    webpush: { headers: { Urgency: 'high' } },
   });
 
   response.responses.forEach((r, i) => {
@@ -62,10 +65,3 @@ export const dailyVaccinationCheck = onSchedule(
     console.log(`dailyVaccinationCheck: ${result.dueCount} due, ${result.notified} devices notified`);
   },
 );
-
-// Lets the app trigger a real run on demand (e.g. right after enabling
-// notifications) instead of waiting until 08:00 UTC to confirm it works.
-export const triggerVaccinationCheck = onCall({ region: REGION }, async (request) => {
-  if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in required.');
-  return checkDueVaccinationsAndNotify();
-});

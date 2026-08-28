@@ -17,6 +17,5 @@ export { onVaccineCreated, onVaccineUpdated, onVaccineDeleted } from './vaccines
 // client can't do itself. See cows.ts for details.
 export { createCow, updateCow, deleteCow } from './cows.js';
 
-// M6: daily 08:00 UTC due-vaccination push notifications, plus a callable
-// so the app can trigger a real run on demand for testing.
-export { dailyVaccinationCheck, triggerVaccinationCheck } from './notifications.js';
+// M6: daily 08:00 UTC due-vaccination push notifications.
+export { dailyVaccinationCheck } from './notifications.js';
