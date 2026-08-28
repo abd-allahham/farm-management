@@ -1,12 +1,17 @@
 import {
   collection,
   doc,
+  getDocs,
+  limit,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
   updateDoc,
+  where,
+  type DocumentData,
   type Firestore,
+  type QueryDocumentSnapshot,
 } from 'firebase/firestore';
 import { httpsCallable, type Functions } from 'firebase/functions';
 import { db, functions } from '../../lib/firebase';
@@ -26,31 +31,54 @@ function requireFunctions(): Functions {
 
 const cowsCollection = () => collection(requireDb(), 'cows');
 
+function mapCowDoc(docSnap: QueryDocumentSnapshot<DocumentData>): Cow {
+  const data = docSnap.data();
+  return {
+    id: docSnap.id,
+    barcode: data.barcode as string,
+    birthDate: data.birthDate as number,
+    yardId: data.yardId as string,
+    status: data.status as Cow['status'],
+    slaughteredAt: data.slaughteredAt?.toMillis?.(),
+    // Pending local writes haven't got a server timestamp yet.
+    createdAt: data.createdAt?.toMillis?.() ?? Date.now(),
+  };
+}
+
 export function subscribeToCows(
   onChange: (cows: Cow[]) => void,
   onError: (error: Error) => void,
 ): () => void {
   const q = query(cowsCollection(), orderBy('createdAt', 'asc'));
+  return onSnapshot(q, (snapshot) => onChange(snapshot.docs.map(mapCowDoc)), onError);
+}
+
+// Single-cow subscription for CowDetailPage — separate from subscribeToCows
+// above so the detail page doesn't need to load/hold the whole herd.
+export function subscribeToCow(
+  id: string,
+  onChange: (cow: Cow | null) => void,
+  onError: (error: Error) => void,
+): () => void {
   return onSnapshot(
-    q,
-    (snapshot) => {
-      const cows = snapshot.docs.map((docSnap) => {
-        const data = docSnap.data();
-        return {
-          id: docSnap.id,
-          barcode: data.barcode as string,
-          birthDate: data.birthDate as number,
-          yardId: data.yardId as string,
-          status: data.status as Cow['status'],
-          slaughteredAt: data.slaughteredAt?.toMillis?.(),
-          // Pending local writes haven't got a server timestamp yet.
-          createdAt: data.createdAt?.toMillis?.() ?? Date.now(),
-        };
-      });
-      onChange(cows);
+    doc(requireDb(), 'cows', id),
+    (snap) => {
+      if (!snap.exists()) {
+        onChange(null);
+        return;
+      }
+      onChange(mapCowDoc(snap));
     },
     onError,
   );
+}
+
+// One-time lookup for the "scan or enter a tag" flow (FindCowPage) — not a
+// subscription, since it's a single point-in-time search, not something the
+// page needs to keep watching.
+export async function findCowByBarcode(barcode: string): Promise<Cow | null> {
+  const snap = await getDocs(query(cowsCollection(), where('barcode', '==', barcode), limit(1)));
+  return snap.empty ? null : mapCowDoc(snap.docs[0]);
 }
 
 export function subscribeToCowVaccinations(

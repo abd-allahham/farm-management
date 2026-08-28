@@ -4,6 +4,8 @@ import { ProtectedRoute } from './auth/ProtectedRoute';
 import { isFirebaseConfigured } from './lib/firebase';
 import { AppShell } from './layout/AppShell';
 import { CowsPage } from './features/cows/CowsPage';
+import { CowDetailPage } from './features/cows/CowDetailPage';
+import { FindCowPage } from './features/cows/FindCowPage';
 import { YardsPage } from './features/yards/YardsPage';
 import { VaccinesPage } from './features/vaccines/VaccinesPage';
 import { LoginPage } from './routes/LoginPage';
@@ -28,6 +30,8 @@ export default function App() {
           >
             <Route index element={<Navigate to="/cows" replace />} />
             <Route path="cows" element={<CowsPage />} />
+            <Route path="cows/:id" element={<CowDetailPage />} />
+            <Route path="scan" element={<FindCowPage />} />
             <Route path="yards" element={<YardsPage />} />
             <Route path="vaccines" element={<VaccinesPage />} />
           </Route>
