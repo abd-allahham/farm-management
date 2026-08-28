@@ -5,8 +5,17 @@ import { setVaccinationTaken, subscribeToCowVaccinations } from './api';
 import { formatDate } from './dateUtils';
 import type { CowVaccination } from './types';
 
+interface Props {
+  cowId: string;
+  vaccines: Vaccine[];
+  // A slaughtered cow's vaccination record is history, not something to
+  // keep editing — the toggle is disabled entirely rather than just hidden,
+  // so it's visibly (not silently) not an option.
+  disabled?: boolean;
+}
+
 // Shared by CowsPage (per-row, expandable) and CowDetailPage (always shown).
-export function CowVaccinationList({ cowId, vaccines }: { cowId: string; vaccines: Vaccine[] }) {
+export function CowVaccinationList({ cowId, vaccines, disabled = false }: Props) {
   const [vaccinations, setVaccinations] = useState<CowVaccination[] | null>(null);
   const [saving, setSaving] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
@@ -27,6 +36,7 @@ export function CowVaccinationList({ cowId, vaccines }: { cowId: string; vaccine
   }, [vaccinations, search, vaccines]);
 
   const toggle = async (v: CowVaccination) => {
+    if (disabled) return;
     setSaving((s) => new Set(s).add(v.vaccineId));
     setError(null);
     try {
@@ -104,11 +114,12 @@ export function CowVaccinationList({ cowId, vaccines }: { cowId: string; vaccine
 
                 <button
                   onClick={() => void toggle(v)}
-                  disabled={saving.has(v.vaccineId)}
+                  disabled={disabled || saving.has(v.vaccineId)}
+                  title={disabled ? 'This cow has been slaughtered — its vaccination record is read-only.' : undefined}
                   className={
                     isDone
-                      ? 'rounded-lg px-3 py-2 text-xs font-medium text-slate-500 hover:text-slate-700 disabled:opacity-50'
-                      : 'rounded-lg bg-green-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-green-800 disabled:opacity-50'
+                      ? 'rounded-lg px-3 py-2 text-xs font-medium text-slate-500 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-slate-500'
+                      : 'rounded-lg bg-green-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-green-700'
                   }
                 >
                   {isDone ? 'Undo' : 'Vaccinate'}

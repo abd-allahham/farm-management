@@ -115,7 +115,9 @@ export function CowListRow({ cow, yards, vaccines, expanded, onToggleExpand }: P
 
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
 
-      {expanded && !editing && <CowVaccinationList cowId={cow.id} vaccines={vaccines} />}
+      {expanded && !editing && (
+        <CowVaccinationList cowId={cow.id} vaccines={vaccines} disabled={cow.status !== 'active'} />
+      )}
 
       {deleteConfirmOpen && (
         <ConfirmDialog

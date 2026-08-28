@@ -187,7 +187,7 @@ function CowDetail({
         {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
       </div>
 
-      <CowVaccinationList cowId={cow.id} vaccines={vaccines} />
+      <CowVaccinationList cowId={cow.id} vaccines={vaccines} disabled={cow.status !== 'active'} />
 
       {deleteConfirmOpen && (
         <ConfirmDialog
