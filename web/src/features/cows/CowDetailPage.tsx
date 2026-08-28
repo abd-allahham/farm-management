@@ -7,6 +7,7 @@ import type { Yard } from '../yards/types';
 import { subscribeToVaccines } from '../vaccines/api';
 import type { Vaccine } from '../vaccines/types';
 import { subscribeToCow } from './api';
+import { CowStatusBadge } from './CowStatusBadge';
 import { CowVaccinationList } from './CowVaccinationList';
 import { formatDate } from './dateUtils';
 import { useCowActions } from './useCowActions';
@@ -142,11 +143,7 @@ function CowDetail({
           <>
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-semibold text-slate-900">{cow.barcode}</h2>
-              {cow.status === 'slaughtered' && (
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">
-                  Slaughtered
-                </span>
-              )}
+              <CowStatusBadge status={cow.status} />
             </div>
             <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
               <dt className="text-slate-500">Born</dt>

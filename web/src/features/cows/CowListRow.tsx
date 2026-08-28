@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
+import { ChevronDown } from 'lucide-react';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import type { Yard } from '../yards/types';
 import type { Vaccine } from '../vaccines/types';
+import { CowStatusBadge } from './CowStatusBadge';
 import { CowVaccinationList } from './CowVaccinationList';
 import { formatDate } from './dateUtils';
 import { useCowActions } from './useCowActions';
@@ -64,18 +66,25 @@ export function CowListRow({ cow, yards, vaccines, expanded, onToggleExpand }: P
           </div>
         ) : (
           <div className="flex flex-1 items-center gap-2">
-            <button onClick={onToggleExpand} className="flex-1 text-left">
-              <p className="flex items-center gap-2 text-sm text-slate-800">
-                {cow.barcode}
-                {cow.status === 'slaughtered' && (
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">
-                    Slaughtered
-                  </span>
-                )}
-              </p>
-              <p className="text-xs text-slate-500">
-                Born {formatDate(cow.birthDate)} · {yardName(cow.yardId)}
-              </p>
+            <button
+              onClick={onToggleExpand}
+              aria-expanded={expanded}
+              className="flex flex-1 items-center gap-2 text-left"
+            >
+              <ChevronDown
+                size={16}
+                className={`shrink-0 text-slate-400 transition-transform ${expanded ? 'rotate-180' : ''}`}
+                aria-hidden
+              />
+              <span className="min-w-0 flex-1">
+                <p className="flex items-center gap-2 text-sm text-slate-800">
+                  {cow.barcode}
+                  <CowStatusBadge status={cow.status} />
+                </p>
+                <p className="text-xs text-slate-500">
+                  Born {formatDate(cow.birthDate)} · {yardName(cow.yardId)}
+                </p>
+              </span>
             </button>
             <Link to={`/cows/${cow.id}`} className="shrink-0 text-xs font-medium text-slate-500 hover:text-slate-700">
               Details
