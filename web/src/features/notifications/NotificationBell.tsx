@@ -5,9 +5,13 @@ import { useNotifications } from './NotificationsContext';
 
 interface Props {
   className?: string;
+  // 'down' (default) suits the mobile top bar, near the top of the screen.
+  // The desktop sidebar instance sits at the bottom of a tall column, where
+  // a downward menu can overflow past the viewport edge — pass 'up' there.
+  menuPlacement?: 'down' | 'up';
 }
 
-export function NotificationBell({ className = '' }: Props) {
+export function NotificationBell({ className = '', menuPlacement = 'down' }: Props) {
   const { supported, registered, busy, error, retry, disable } = useNotifications();
   const [menuOpen, setMenuOpen] = useState(false);
   const [testBusy, setTestBusy] = useState(false);
@@ -73,7 +77,9 @@ export function NotificationBell({ className = '' }: Props) {
       {menuOpen && (
         <div
           role="menu"
-          className="absolute right-0 z-20 mt-1 w-52 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+          className={`absolute right-0 z-20 w-52 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg ${
+            menuPlacement === 'up' ? 'bottom-full mb-1' : 'top-full mt-1'
+          }`}
         >
           <button
             role="menuitem"

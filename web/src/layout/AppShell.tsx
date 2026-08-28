@@ -41,7 +41,7 @@ export function AppShell() {
           <div className="border-t border-slate-200 px-4 py-3">
             <div className="flex items-center justify-between">
               <p className="truncate text-xs text-slate-500">{user?.displayName ?? user?.email}</p>
-              <NotificationBell />
+              <NotificationBell menuPlacement="up" />
             </div>
             <button
               onClick={() => void signOut()}
