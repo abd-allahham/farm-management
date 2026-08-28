@@ -15,9 +15,10 @@ interface Props {
   vaccines: Vaccine[];
   expanded: boolean;
   onToggleExpand: () => void;
+  onDeleted: () => void;
 }
 
-export function CowListRow({ cow, yards, vaccines, expanded, onToggleExpand }: Props) {
+export function CowListRow({ cow, yards, vaccines, expanded, onToggleExpand, onDeleted }: Props) {
   const {
     editing,
     editDraft,
@@ -31,7 +32,7 @@ export function CowListRow({ cow, yards, vaccines, expanded, onToggleExpand }: P
     cancelDeleteConfirm,
     confirmDelete,
     error,
-  } = useCowActions(cow);
+  } = useCowActions(cow, { onDeleted });
 
   const yardName = (yardId: string) => yards.find((y) => y.id === yardId)?.name ?? '—';
 

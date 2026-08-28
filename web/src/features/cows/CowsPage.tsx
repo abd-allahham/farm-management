@@ -31,6 +31,11 @@ export function CowsPage() {
   const [draft, setDraft] = useState<CreateDraft>(emptyDraft);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
+  // deleteCow is a server-side callable, not a direct client write, so
+  // there's a brief window where the live cows subscription hasn't caught
+  // up yet after a successful delete. Hide it from view immediately instead
+  // of waiting on that round-trip.
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const unsubCows = subscribeToCows(
@@ -133,20 +138,23 @@ export function CowsPage() {
       <ul className="mt-4 divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
         {loading && <li className="px-4 py-3 text-sm text-slate-500">Loading cows…</li>}
 
-        {!loading && cows.length === 0 && (
+        {!loading && cows.filter((c) => !hiddenIds.has(c.id)).length === 0 && (
           <li className="px-4 py-3 text-sm text-slate-500">No cows yet — add one above.</li>
         )}
 
-        {cows.map((cow) => (
-          <CowListRow
-            key={cow.id}
-            cow={cow}
-            yards={yards}
-            vaccines={vaccines}
-            expanded={expandedId === cow.id}
-            onToggleExpand={() => setExpandedId(expandedId === cow.id ? null : cow.id)}
-          />
-        ))}
+        {cows
+          .filter((cow) => !hiddenIds.has(cow.id))
+          .map((cow) => (
+            <CowListRow
+              key={cow.id}
+              cow={cow}
+              yards={yards}
+              vaccines={vaccines}
+              expanded={expandedId === cow.id}
+              onToggleExpand={() => setExpandedId(expandedId === cow.id ? null : cow.id)}
+              onDeleted={() => setHiddenIds((prev) => new Set(prev).add(cow.id))}
+            />
+          ))}
       </ul>
 
       {scannerOpen && (
